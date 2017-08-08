@@ -22,6 +22,8 @@ class Jump_MU_ACF_Visual_Composer {
 
 	/**
 	 * Jump_MU_ACF_Visual_Composer constructor.
+	 *
+	 * @since 1.0.0
 	 */
 	function __construct() {
 		// We safely integrate with VC with this hook.
@@ -33,6 +35,10 @@ class Jump_MU_ACF_Visual_Composer {
 
 	/**
 	 * Integrate the plugin with Visual Composer
+	 *
+	 * TODO: We want to be able to select which blog is the "master" in a dropdown. The other fields will populate their data based on this selection. See [1]
+	 *
+	 * @since 1.0.0
 	 */
 	public function integrate_with_vc() {
 
@@ -44,7 +50,7 @@ class Jump_MU_ACF_Visual_Composer {
 		$groups_param_values = array();
 		$fields_params = array();
 
-		// Switch the context to the 'master' blog where the desired fields live.
+		// [1] Switch the context to the 'master' blog where the desired fields live.
 		switch_to_blog( 1 );
 
 		if ( function_exists( 'acf_get_field_groups' ) ) {
@@ -123,6 +129,8 @@ class Jump_MU_ACF_Visual_Composer {
 	/**
 	 * Shortcode logic how it should be rendered.
 	 *
+	 * @since 1.0.0
+	 *
 	 * @param array $atts An array of attribute values.
 	 * @param null  $content The content inside of the shortcode.
 	 *
@@ -133,6 +141,8 @@ class Jump_MU_ACF_Visual_Composer {
 
 		/**
 		 * Extract the shortcode attributes.
+		 *
+		 * @since 1.0.0
 		 *
 		 * @var string $el_class
 		 * @var string $show_label
@@ -184,7 +194,9 @@ class Jump_MU_ACF_Visual_Composer {
 	}
 
 	/**
-	 * Show notice if VC is not installed
+	 * Show notice if VC is not installed.
+	 *
+	 * @since 1.0.0
 	 */
 	public function show_vc_version_notice() {
 		$plugin_data = get_plugin_data( __FILE__ );
