@@ -92,7 +92,6 @@ class Jump_MU_ACF_Visual_Composer {
 		$groups_param_values = array();
 		$fields_param_elements = array();
 		$fields_param_value = array();
-		$fields_params = array();
 
 		/**
 		 * Loop through all of the sites and generate groups and fields for each respective site
@@ -101,11 +100,12 @@ class Jump_MU_ACF_Visual_Composer {
 		 * [2] Switch to the current $site context.
 		 * [3] Get all groups belonging to site.
 		 * [4] Loop through the groups that belong to $site.
-		 * [5] Loop through the fields and push them into the $fields array if they are NOT the 'type' set in options.
-		 * [6] Generate the select/dropdown with the groups assigned to the $site_id.
-		 * [7] Generate the select/dropdown with the fields assigned to the $group[ $id ].
-		 * [8] Restore the current blog context.
-		 * [9] Map the elements to Visual Composer.
+		 * [5] Get all fields belonging to the group.
+		 * [6] Loop through the fields and push them into the $fields array if they are NOT the 'type' set in options.
+		 * [7] Generate the select/dropdown with the groups assigned to the $site_id.
+		 * [8] Generate the select/dropdown with the fields assigned to the $group[ $id ].
+		 * [9] Restore the current blog context.
+		 * [10] Map the elements to Visual Composer.
 		 *
 		 * @since 1.1.0
 		 */
@@ -125,15 +125,11 @@ class Jump_MU_ACF_Visual_Composer {
 			// [3] Get all groups belonging to site.
 			$groups = $this->get_acf_groups();
 
-			echo 'switching to context ' . $site_id;
-
 			// [4] Loop through the groups that belong to $site.
 			foreach ( $groups as $group ) {
 
 				unset( $fields_param_value );
 				$fields_param_value = array();
-
-				echo 'Group start fields: ' . print_r( $fields_param_elements );
 
 				// I believe this is for backwards compatibility. Some fields may use 'id' while others use 'ID'.
 				$id_nomen = $this->get_id_nomenclature( $group['ID'] );
@@ -141,19 +137,17 @@ class Jump_MU_ACF_Visual_Composer {
 				// Create the key => value pairs for the site select dropdown.
 				$groups_param_values[ $group['title'] ] = $group[ $id_nomen ];
 
+				// [5] Get all fields belonging to the group.
 				$fields = $this->get_acf_fields( $group[ $id_nomen ] );
 
-				echo 'Fields: ' . print_r( $fields );
-
-				// [5] Loop through the fields and push them into the $fields array if they are NOT the 'type' set in options.
+				// [6] Loop through the fields and push them into the $fields array if they are NOT the 'type' set in options.
 				foreach ( (array) $fields as $field ) {
 					if ( 'tab' !== $field['type'] && 'message' !== $field['type']) {
 						$fields_param_value[ $field['label'] ] = $field['key'];
 					}
 				}
 
-				echo 'fields params: ' . print_r( $fields_param_value );
-
+				// [7] Generate the select/dropdown with the groups assigned to the $site_id.
 				$fields_param_elements[] = array(
 					'type'        => 'dropdown',
 					'heading'     => __( 'Field name', 'js_composer' ),
@@ -168,9 +162,7 @@ class Jump_MU_ACF_Visual_Composer {
 				);
 			} // End foreach().
 
-			// Restore the context to the current blog/site.
-			restore_current_blog();
-
+			// [8] Generate the select/dropdown with the fields assigned to the $group[ $id ].
 			$groups_param_elements[] = array(
 				'type'        => 'dropdown',
 				'heading'     => __( 'Field group', 'js_composer' ),
@@ -183,8 +175,13 @@ class Jump_MU_ACF_Visual_Composer {
 					'value'   => $site_id,
 				),
 			);
+
+			// [9] Restore the current blog context.
+			restore_current_blog();
+
 		} // End foreach().
 
+		// [10] Map the elements to Visual Composer.
 		vc_map( array(
 			'name'        => __( 'Multi-Site Advanced Custom Field', 'js_composer' ),
 			'base'        => 'jump_acf',
@@ -217,12 +214,10 @@ class Jump_MU_ACF_Visual_Composer {
 	 * @since 1.0.0
 	 *
 	 * @param array $atts An array of attribute values.
-	 * @param null  $content The content inside of the shortcode.
 	 *
 	 * @return string
 	 */
-	public function render_field( $atts, $content = null ) {
-		$field_key = '';
+	public function render_field( $atts ) {
 
 		/**
 		 * Extract the shortcode attributes.
@@ -235,23 +230,22 @@ class Jump_MU_ACF_Visual_Composer {
 		 * @var string $field_group
 		 */
 		$shortcode_atts = shortcode_atts( array(
-			'el_class'    => '',
-			'field_group' => '',
+			'el_class'      => '',
 		), $atts );
 
+		$field_key = '';
+		$field_group = $atts['field_group'];
+
 		// Switch the context to the 'master' blog where the desired fields live.
-		switch_to_blog( 1 );
+		switch_to_blog( $atts['blog_group'] );
 
 		if ( 0 === strlen( $field_group ) ) {
 
+			// Get all of the groups from the site context.
 			$groups = $this->get_acf_groups();
 
 			if ( is_array( $groups ) && isset( $groups[0] ) ) {
-				$key = 'id';
-
-				if ( isset( $groups[0]['ID'] ) ) {
-					$key = 'ID';
-				}
+				$key = $this->get_id_nomenclature( $groups[0]['ID'] );
 
 				$field_group = $groups[0][ $key ];
 			}
@@ -259,19 +253,20 @@ class Jump_MU_ACF_Visual_Composer {
 
 		if ( ! empty( $field_group ) ) {
 
-			if ( ! empty( $shortcode_atts[ 'field_from_' . $field_group ] ) ) {
-				$field_key = $shortcode_atts[ 'field_from_' . $field_group ];
+			if ( ! empty( $atts[ 'field_from_' . $field_group ] ) ) {
+				$field_key = $atts[ 'field_from_' . $field_group ];
 			} else {
-				$field_key = 'field_from_group_' . $field_group;
+				$field_key = $atts[ 'field_' . $field_group ];
 			}
 		}
 
+		// Retrieve the field from ACF.
 		$field = get_field_object( $field_key, 'option' );
 
 		// Restore the context to the current blog/site.
 		restore_current_blog();
 
-		return '<div>' . $field['value'] . '</div>';
+		return '<div class="' . $shortcode_atts['el_class'] . '">' . $field['value'] . '</div>';
 	}
 
 	/**
