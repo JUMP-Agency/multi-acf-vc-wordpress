@@ -3,7 +3,7 @@
  * Plugin Name: Multi-Site ACF for Visual Composer
  * Plugin URI: https://github.com/orgs/JUMP-Agency/multi-acf-vc-wordpress
  * Description: Allows you to use shared ACF fields from sub-sites.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Aaron Arney
  * Author URI: https://github.com/orgs/JUMP-Agency/
  * License: MIT
