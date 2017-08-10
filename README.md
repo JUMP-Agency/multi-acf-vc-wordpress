@@ -48,7 +48,6 @@ With that in place, go into your 'master' blog and start creating your fields. E
 Lastly, edit a page with Visual Composer and select the `Advanced Custom Field` component. Your options groups and fields will be displayed in dropdowns.
 
 
-
 ## Developing
 
 If you would like to contribute, feel free to create a pull request. 
@@ -67,13 +66,6 @@ There are currently no tests implemented.
 ## Style guide
 
 Code style follows the [PHPCS WordPress](https://github.com/WordPress-Coding-Standards/WordPress-Coding-Standards) standards.
-
-
-## Changelog
-
-### [1.0.0] - 2017-08-08
-#### Added
-- Initial Commit
 
 
 ## Licensing
