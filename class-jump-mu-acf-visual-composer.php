@@ -78,8 +78,6 @@ class Jump_MU_ACF_Visual_Composer {
 	/**
 	 * Integrate the plugin with Visual Composer
 	 *
-	 * TODO: We want to be able to select which blog is the "master" in a dropdown. The other fields will populate their data based on this selection. See [1]
-	 *
 	 * @since 1.0.0
 	 */
 	public function integrate_with_vc() {
@@ -95,40 +93,80 @@ class Jump_MU_ACF_Visual_Composer {
 		$fields_param_elements = array();
 		$fields_param_value = array();
 		$fields_params = array();
-		$all_sites = get_sites(); // List all of the sites in the MU.
-		$uuid = uniqid();
 
 		/**
 		 * Loop through all of the sites and generate groups and fields for each respective site
 		 *
-		 * [1] Switch to the current $site context.
-		 * [2] Loop through the groups that belong to $site.
-		 * [3] Loop through the fields and push them into the $fields array if they are NOT the 'type' set in options
-		 * [4] Generate the select/dropdown with the groups assigned to the $site_id.
-		 * [5] Generate the select/dropdown with the fields assigned to the $group[ $id ].
-		 * [6] Restore the current blog context
-		 * [7] Map the elements to Visual Composer
+		 * [1] Loop through all sites.
+		 * [2] Switch to the current $site context.
+		 * [3] Get all groups belonging to site.
+		 * [4] Loop through the groups that belong to $site.
+		 * [5] Loop through the fields and push them into the $fields array if they are NOT the 'type' set in options.
+		 * [6] Generate the select/dropdown with the groups assigned to the $site_id.
+		 * [7] Generate the select/dropdown with the fields assigned to the $group[ $id ].
+		 * [8] Restore the current blog context.
+		 * [9] Map the elements to Visual Composer.
 		 *
 		 * @since 1.1.0
 		 */
+
+		// [1] Loop through all sites.
 		foreach ( get_sites() as $site ) {
+			unset( $groups_param_values );
 			$groups_param_values = array();
 			$site_vars = get_object_vars( $site );
 			$site_id = $site_vars['blog_id']; // The Blog ID.
 			$site_name = get_blog_details( $site_id )->blogname; // Store key name for displaying in VC.
 			$blog_id_param_values[ $site_name ] = $site_id; // Store key values for displaying in VC.
 
+			// [2] Switch to the current $site context.
 			switch_to_blog( $site_id );
 
+			// [3] Get all groups belonging to site.
 			$groups = $this->get_acf_groups();
 
-			// [2] Loop through the groups that belong to $site.
-			foreach ( $groups as $group ) {
-				$id_nomen = $this->get_id_nomenclature( $group['ID'] );
-				$groups_param_values[ $group['title'] ] = $group[ $id_nomen ];
-			}
+			echo 'switching to context ' . $site_id;
 
-			// echo "<pre>" . print_r( $groups_param_elements ) . "</pre>";
+			// [4] Loop through the groups that belong to $site.
+			foreach ( $groups as $group ) {
+
+				unset( $fields_param_value );
+				$fields_param_value = array();
+
+				echo 'Group start fields: ' . print_r( $fields_param_elements );
+
+				// I believe this is for backwards compatibility. Some fields may use 'id' while others use 'ID'.
+				$id_nomen = $this->get_id_nomenclature( $group['ID'] );
+
+				// Create the key => value pairs for the site select dropdown.
+				$groups_param_values[ $group['title'] ] = $group[ $id_nomen ];
+
+				$fields = $this->get_acf_fields( $group[ $id_nomen ] );
+
+				echo 'Fields: ' . print_r( $fields );
+
+				// [5] Loop through the fields and push them into the $fields array if they are NOT the 'type' set in options.
+				foreach ( (array) $fields as $field ) {
+					if ( 'tab' !== $field['type'] && 'message' !== $field['type']) {
+						$fields_param_value[ $field['label'] ] = $field['key'];
+					}
+				}
+
+				echo 'fields params: ' . print_r( $fields_param_value );
+
+				$fields_param_elements[] = array(
+					'type'        => 'dropdown',
+					'heading'     => __( 'Field name', 'js_composer' ),
+					'param_name'  => 'field_' . $group[ $id_nomen ] ,
+					'value'       => $fields_param_value,
+					'save_always' => true,
+					'description' => __( 'Which field?', 'js_composer' ),
+					'dependency'  => array(
+						'element' => 'group_' . $site_id,
+						'value'  => (string) $group[ $id_nomen ],
+					),
+				);
+			} // End foreach().
 
 			// Restore the context to the current blog/site.
 			restore_current_blog();
@@ -136,7 +174,7 @@ class Jump_MU_ACF_Visual_Composer {
 			$groups_param_elements[] = array(
 				'type'        => 'dropdown',
 				'heading'     => __( 'Field group', 'js_composer' ),
-				'param_name'  => 'group_' . $site_id,
+				'param_name'  => 'group_' . $site_id, // Unique ID for the field.
 				'value'       => $groups_param_values,
 				'save_always' => true,
 				'description' => __( 'Select field group.', 'js_composer' ),
@@ -162,7 +200,7 @@ class Jump_MU_ACF_Visual_Composer {
 					'save_always' => true,
 					'description' => __( 'Select blog.', 'js_composer' ),
 				),
-			), $groups_param_elements, array(
+			), $groups_param_elements, $fields_param_elements, array(
 				array(
 					'type'        => 'textfield',
 					'heading'     => __( 'Extra class name', 'js_composer' ),
@@ -171,13 +209,6 @@ class Jump_MU_ACF_Visual_Composer {
 				),
 			) ),
 		) );
-	}
-
-	private function get_site_groups() {
-		$groups_param_elements = array();
-		$blog_id_param_values = array();
-
-
 	}
 
 	/**
