@@ -34,6 +34,48 @@ class Jump_MU_ACF_Visual_Composer {
 	}
 
 	/**
+	 * Get Advanced Custom Fields Groups
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param null $id A string containing the ID of the groups to grab
+	 *
+	 * @return array
+	 */
+	private function get_acf_groups( $id = null ) {
+		if ( function_exists( 'acf_get_field_groups' ) ) {
+			return acf_get_field_groups( $id );
+		} else {
+			return apply_filters( 'acf_get_field_groups', array(), $id );
+		}
+	}
+
+	/**
+	 * Get Advanced Custom Fields Fields
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param null $id A string containing the ID of the fields to grab
+	 *
+	 * @return array
+	 */
+	private function get_acf_fields( $id = null ) {
+		if ( function_exists( 'acf_get_fields' ) ) {
+			return acf_get_fields( $id );
+		} else {
+			return apply_filters( 'acf_field_group_get_fields', array(), $id );
+		}
+	}
+
+	private function get_id_nomenclature( $group ) {
+		if ( isset( $group ) ) {
+			return 'ID';
+		} else {
+			return 'id';
+		}
+	}
+
+	/**
 	 * Integrate the plugin with Visual Composer
 	 *
 	 * TODO: We want to be able to select which blog is the "master" in a dropdown. The other fields will populate their data based on this selection. See [1]
@@ -47,79 +89,92 @@ class Jump_MU_ACF_Visual_Composer {
 			return;
 		}
 
+		$blog_id_param_values = array();
+		$groups_param_elements = array();
 		$groups_param_values = array();
+		$fields_param_elements = array();
+		$fields_param_value = array();
 		$fields_params = array();
+		$all_sites = get_sites();
 
-		// [1] Switch the context to the 'master' blog where the desired fields live.
-		switch_to_blog( 1 );
+		/**
+		 * Loop through all of the sites and generate groups and fields for each respective site
+		 *
+		 * [1] Switch to the current $site context.
+		 * [2] Loop through the groups that belong to $site.
+		 * [3] Loop through the fields and push them into the $fields array if they are NOT the 'type' set in options
+		 * [4] Generate the select/dropdown with the groups assigned to the $site_id.
+		 * [5] Generate the select/dropdown with the fields assigned to the $group[ $id ].
+		 * [6] Restore the current blog context
+		 * [7] Map the elements to Visual Composer
+		 *
+		 * @since 1.1.0
+		 */
+		foreach ( $all_sites as $site ) {
+			$uuid = uniqid();
+			$site_vars = get_object_vars( $site );
+			$site_id = $site_vars['blog_id']; // The Blog ID.
+			$site_name = get_blog_details( $site_id )->blogname; // Store key name for displaying in VC.
+			$blog_id_param_values[ $site_name ] = $site_id; // Store key values for displaying in VC.
 
-		if ( function_exists( 'acf_get_field_groups' ) ) {
-			$groups = acf_get_field_groups();
-		} else {
-			$groups = apply_filters( 'acf_get_field_groups', array() );
-		}
+			switch_to_blog( (int) $site_id );
 
-		// Loop through all available ACF groups.
-		foreach ( (array) $groups as $group ) {
-			$id = 'id';
+			// [2] Loop through the groups that belong to $site.
+			$groups = $this->get_acf_groups();
 
-			if ( isset( $group['ID'] ) ) {
-				$id = 'ID';
+			foreach ( $groups as $group ) {
+				$id_nomen = $this->get_id_nomenclature( $group['ID'] );
+
+				// Get all of the groups and assign them to key => values
+				// $groups_param_values['Content'] = 23
+				// $groups_param_values['Header'] = 28
+				$groups_param_values[ $group['title'] ] = $group[ $id_nomen ];
+
+
+				// echo print_r( $group );
 			}
 
-			$groups_param_values[ $group['title'] ] = $group[ $id ];
-			$fields_param_value = array();
 
-			if ( function_exists( 'acf_get_fields' ) ) {
-				$fields = acf_get_fields( $group[ $id ] );
-			} else {
-				$fields = apply_filters( 'acf_field_group_get_fields', array(), $group[ $id ] );
-			}
 
-			// Don't display the field if it is a type => tab.
-			foreach ( (array) $fields as $field ) {
-				if ( 'tab' !== $field['type'] ) {
-					$fields_param_value[ $field['label'] ] = (string) $field['key'];
-				}
-			}
+			// Restore the context to the current blog/site.
+			restore_current_blog();
 
-			$fields_params[] = array(
-				'type'        => 'dropdown',
-				'heading'     => __( 'Field name', 'js_composer' ),
-				'param_name'  => 'field_from_' . $group[ $id ],
-				'value'       => $fields_param_value,
-				'save_always' => true,
-				'description' => __( 'Which field?', 'js_composer' ),
-				'dependency'  => array(
-					'element' => 'field_group',
-					'value'   => array( (string) $group[ $id ] ),
-				),
-			);
 		} // End foreach().
 
-		// Restore the context to the current blog/site.
-		restore_current_blog();
+
+		$groups_param_elements[] = array(
+			'type'        => 'dropdown',
+			'heading'     => __( 'Field group', 'js_composer' ),
+			'param_name'  => 'groupasdf',
+			'value'       => $groups_param_values,
+			'save_always' => true,
+			'description' => __( 'Select field group.', 'js_composer' ),
+			'dependency'  => array(
+				'element' => 'blog_group',
+				'value'   => array( $site_id ),
+			),
+		);
 
 		vc_map( array(
-			'name' => __( 'Advanced Custom Field', 'js_composer' ),
-			'base' => 'jump_acf',
-			'icon' => 'vc_icon-acf',
-			'category' => __( 'Content', 'js_composer' ),
-			'description' => __( 'Advanced Custom Field', 'js_composer' ),
-			'params' => array_merge( array(
-					array(
-						'type' => 'dropdown',
-						'heading' => __( 'Field group', 'js_composer' ),
-						'param_name' => 'field_group',
-						'value' => $groups_param_values,
-						'save_always' => true,
-						'description' => __( 'Select field group.', 'js_composer' ),
-					),
-				), $fields_params, array(
+			'name'        => __( 'Multi-Site Advanced Custom Field', 'js_composer' ),
+			'base'        => 'jump_acf',
+			'icon'        => 'vc_icon-acf',
+			'category'    => __( 'Content', 'js_composer' ),
+			'description' => __( 'Advanced Custom Field from another blog site', 'js_composer' ),
+			'params'      => array_merge( array(
 				array(
-					'type' => 'textfield',
-					'heading' => __( 'Extra class name', 'js_composer' ),
-					'param_name' => 'el_class',
+					'type'        => 'dropdown',
+					'heading'     => __( 'Blog', 'js_composer' ),
+					'param_name'  => 'blog_group',
+					'value'       => $blog_id_param_values,
+					'save_always' => true,
+					'description' => __( 'Select blog.', 'js_composer' ),
+				),
+			), $groups_param_elements, array(
+				array(
+					'type'        => 'textfield',
+					'heading'     => __( 'Extra class name', 'js_composer' ),
+					'param_name'  => 'el_class',
 					'description' => __( 'Style particular content element differently - add a class name and refer to it in custom CSS.', 'js_composer' ),
 				),
 			) ),
@@ -159,11 +214,7 @@ class Jump_MU_ACF_Visual_Composer {
 
 		if ( 0 === strlen( $field_group ) ) {
 
-			if ( function_exists( 'acf_get_field_groups' ) ) {
-				$groups = acf_get_field_groups();
-			} else {
-				$groups = apply_filters( 'acf_get_field_groups', array() );
-			}
+			$groups = $this->get_acf_groups();
 
 			if ( is_array( $groups ) && isset( $groups[0] ) ) {
 				$key = 'id';
