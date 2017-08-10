@@ -95,7 +95,8 @@ class Jump_MU_ACF_Visual_Composer {
 		$fields_param_elements = array();
 		$fields_param_value = array();
 		$fields_params = array();
-		$all_sites = get_sites();
+		$all_sites = get_sites(); // List all of the sites in the MU.
+		$uuid = uniqid();
 
 		/**
 		 * Loop through all of the sites and generate groups and fields for each respective site
@@ -110,50 +111,41 @@ class Jump_MU_ACF_Visual_Composer {
 		 *
 		 * @since 1.1.0
 		 */
-		foreach ( $all_sites as $site ) {
-			$uuid = uniqid();
+		foreach ( get_sites() as $site ) {
+			$groups_param_values = array();
 			$site_vars = get_object_vars( $site );
 			$site_id = $site_vars['blog_id']; // The Blog ID.
 			$site_name = get_blog_details( $site_id )->blogname; // Store key name for displaying in VC.
 			$blog_id_param_values[ $site_name ] = $site_id; // Store key values for displaying in VC.
 
-			switch_to_blog( (int) $site_id );
+			switch_to_blog( $site_id );
 
-			// [2] Loop through the groups that belong to $site.
 			$groups = $this->get_acf_groups();
 
+			// [2] Loop through the groups that belong to $site.
 			foreach ( $groups as $group ) {
 				$id_nomen = $this->get_id_nomenclature( $group['ID'] );
-
-				// Get all of the groups and assign them to key => values
-				// $groups_param_values['Content'] = 23
-				// $groups_param_values['Header'] = 28
 				$groups_param_values[ $group['title'] ] = $group[ $id_nomen ];
-
-
-				// echo print_r( $group );
 			}
 
-
+			// echo "<pre>" . print_r( $groups_param_elements ) . "</pre>";
 
 			// Restore the context to the current blog/site.
 			restore_current_blog();
 
+			$groups_param_elements[] = array(
+				'type'        => 'dropdown',
+				'heading'     => __( 'Field group', 'js_composer' ),
+				'param_name'  => 'group_' . $site_id,
+				'value'       => $groups_param_values,
+				'save_always' => true,
+				'description' => __( 'Select field group.', 'js_composer' ),
+				'dependency'  => array(
+					'element' => 'blog_group',
+					'value'   => $site_id,
+				),
+			);
 		} // End foreach().
-
-
-		$groups_param_elements[] = array(
-			'type'        => 'dropdown',
-			'heading'     => __( 'Field group', 'js_composer' ),
-			'param_name'  => 'groupasdf',
-			'value'       => $groups_param_values,
-			'save_always' => true,
-			'description' => __( 'Select field group.', 'js_composer' ),
-			'dependency'  => array(
-				'element' => 'blog_group',
-				'value'   => array( $site_id ),
-			),
-		);
 
 		vc_map( array(
 			'name'        => __( 'Multi-Site Advanced Custom Field', 'js_composer' ),
@@ -179,6 +171,13 @@ class Jump_MU_ACF_Visual_Composer {
 				),
 			) ),
 		) );
+	}
+
+	private function get_site_groups() {
+		$groups_param_elements = array();
+		$blog_id_param_values = array();
+
+
 	}
 
 	/**
