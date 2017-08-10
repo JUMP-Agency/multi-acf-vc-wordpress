@@ -67,6 +67,15 @@ class Jump_MU_ACF_Visual_Composer {
 		}
 	}
 
+	/**
+	 * Set the nomenclature for the ID property.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param string $group The array index to check
+	 *
+	 * @return string
+	 */
 	private function get_id_nomenclature( $group ) {
 		if ( isset( $group ) ) {
 			return 'ID';
@@ -128,6 +137,18 @@ class Jump_MU_ACF_Visual_Composer {
 			// [4] Loop through the groups that belong to $site.
 			foreach ( $groups as $group ) {
 
+				/**
+				 *********** BUG ***********
+				 *
+				 * TODO: Investigate why the array is not clearing after every iteration
+				 *
+				 * Interestingly, this array was not being wiped after each iteration.
+				 * Instead of clearing the array, items would be appended to the end...much like a `push`.
+				 *
+				 * I tried to recreate this in another test script but was unable to. Some investigation into
+				 * this will be necessary to truly understand why it is behaving this way. A 'fix' is to
+				 * unset the array at the beginning of every loop iteration.
+				 */
 				unset( $fields_param_value );
 				$fields_param_value = array();
 
@@ -230,7 +251,7 @@ class Jump_MU_ACF_Visual_Composer {
 		 * @var string $field_group
 		 */
 		$shortcode_atts = shortcode_atts( array(
-			'el_class'      => '',
+			'el_class' => '',
 		), $atts );
 
 		$field_key = '';
